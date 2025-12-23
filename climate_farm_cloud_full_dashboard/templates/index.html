@@ -1,0 +1,385 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Climate-Aware Cloud AI — GUI</title>
+
+  <style>
+    body{
+      font-family:Arial, sans-serif;
+      background:linear-gradient(180deg,#eef7f0,#ffffff);
+      padding:20px;
+    }
+    .wrap{max-width:1000px;margin:0 auto;}
+    header{display:flex;align-items:center;gap:16px}
+    h1{color:#1f6f3b;margin:0}
+    .card{
+      background:#fff;
+      border-radius:12px;
+      padding:16px;
+      box-shadow:0 4px 10px rgba(0,0,0,0.05);
+      margin-top:16px
+    }
+    label{display:block;margin-top:8px}
+    input[type=number], input[type=text]{
+      padding:8px;
+      width:180px;
+      border:1px solid #ddd;
+      border-radius:6px
+    }
+    button{
+      background:#1f6f3b;
+      color:#fff;
+      border:none;
+      padding:8px 14px;
+      border-radius:8px;
+      cursor:pointer
+    }
+    #stats img{max-width:100%;border-radius:8px}
+    .top-actions{display:flex;gap:8px;flex-wrap:wrap}
+  </style>
+</head>
+
+<body>
+<div class="wrap">
+
+  <!-- HEADER -->
+  <header>
+    <img src="/static/logo.png" width="56" alt="logo">
+    <div>
+      <h1>Climate-Aware Cloud AI for Farming</h1>
+      <div style="color:#666">Irrigation recommendations & NOAA analytics</div>
+    </div>
+  </header>
+
+  <!-- PREDICTION -->
+  <div class="card">
+    <h3>Sensor prediction</h3>
+
+    <form id="predictForm">
+      <label>Soil moisture (0-1)
+        <input name="soil_moisture" type="number" step="0.01" value="{{ sample.soil_moisture }}">
+      </label>
+
+      <label>Soil temp (°C)
+        <input name="soil_temp" type="number" step="0.1" value="{{ sample.soil_temp }}">
+      </label>
+
+      <label>Air temp (°C)
+        <input name="air_temp" type="number" step="0.1" value="{{ sample.air_temp }}">
+      </label>
+
+      <label>Humidity (%)
+        <input name="humidity" type="number" step="0.1" value="{{ sample.humidity }}">
+      </label>
+
+      <label>Rain last 24h (mm)
+        <input name="rain_24h" type="number" step="0.1" value="{{ sample.rain_24h }}">
+      </label>
+
+      <label>Evapotranspiration (mm)
+        <input name="evapotranspiration" type="number" step="0.1" value="{{ sample.evapotranspiration }}">
+      </label>
+
+      <div style="margin-top:10px">
+        <button type="button" onclick="predict()">Predict irrigation</button>
+        <span style="margin-left:12px;color:#666">
+          Model present: {{ 'Yes' if model_present else 'No' }}
+        </span>
+      </div>
+    </form>
+
+    <pre id="predictResult" style="background:#f7f7f7;padding:10px;border-radius:6px;margin-top:10px"></pre>
+  </div>
+
+
+
+  <!-- NOAA SECTION -->
+  <div class="card">
+    <h3>NOAA data</h3>
+
+    <div class="top-actions">
+      <form id="uploadForm" enctype="multipart/form-data">
+        <input type="file" name="file" accept=".csv">
+        <button type="button" onclick="uploadNoaa()">Upload NOAA CSV</button>
+      </form>
+
+      <div>
+        <label>Station <input id="station" type="text" placeholder="GHCND:USW00094728"></label>
+        <label>Start <input id="start" type="text" placeholder="YYYY-MM-DD"></label>
+        <label>End <input id="end" type="text" placeholder="YYYY-MM-DD"></label>
+        <button onclick="fetchNoaa()">Fetch NOAA</button>
+      </div>
+    </div>
+
+    <div id="uploadResult" style="margin-top:10px"></div>
+    <div id="fetchResult" style="margin-top:10px"></div>
+  </div>
+
+
+
+  <!-- TRAIN MODEL -->
+  <div class="card">
+    <h3>Train model</h3>
+
+    <div>
+      Train using:
+      <select id="dataFile">
+        <option value="">(use synthetic)</option>
+        {% for f in data_files %}
+        <option value="{{ f }}">{{ f }}</option>
+        {% endfor %}
+      </select>
+
+      <button onclick="trainModel()">Train</button>
+    </div>
+
+    <div id="trainResult" style="margin-top:10px"></div>
+  </div>
+
+
+
+  <!-- STATISTICS + DASHBOARD -->
+  <div class="card" id="stats">
+    <h3>Statistics & Dashboard</h3>
+
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+      <div>
+        <label>Select data file</label>
+        <select id="fileSelect"><option value=""></option></select>
+      </div>
+
+      <div>
+        <button onclick="loadPreview()">Load preview</button>
+        <button onclick="loadNumeric()">Load charts</button>
+      </div>
+
+      <div style="flex:1;text-align:right;color:#666">
+        Generated plots from uploaded/fetched NOAA CSV will appear below.
+      </div>
+    </div>
+
+    <div style="margin-top:10px">
+      <div id="previewArea" style="max-height:220px;overflow:auto;background:#fafafa;padding:8px;border-radius:6px;border:1px solid #eee"></div>
+    </div>
+
+    <div style="margin-top:10px">
+      <canvas id="chart1" style="max-width:100%;height:300px"></canvas>
+    </div>
+
+    <div style="margin-top:10px">
+      <canvas id="chart2" style="max-width:100%;height:200px"></canvas>
+    </div>
+
+    <div style="margin-top:10px">
+      <!-- ❗ تم التصحيح هنا -->
+      <img id="statsImg" src="/static/stats.png?ts={{ timestamp }}" onerror="this.style.display='none'">
+    </div>
+  </div>
+
+</div>
+
+
+
+
+
+<!-- JAVASCRIPT -->
+<script>
+async function predict(){
+  const form = document.getElementById("predictForm");
+  const data = {};
+  new FormData(form).forEach((v,k)=>data[k]=v);
+
+  const res = await fetch("/predict", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify(data)
+  });
+
+  const j = await res.json();
+  document.getElementById("predictResult").innerText = JSON.stringify(j, null, 2);
+}
+
+
+
+async function uploadNoaa(){
+  const f = document.querySelector('input[type=file]').files[0];
+  if(!f){ alert("Choose a CSV file"); return; }
+
+  const fd = new FormData();
+  fd.append("file", f);
+
+  const res = await fetch("/upload_noaa", {method:"POST", body: fd});
+  const j = await res.json();
+
+  document.getElementById("uploadResult").innerText = JSON.stringify(j, null, 2);
+  document.getElementById("statsImg").src = "/static/stats.png?ts="+Date.now();
+}
+
+
+
+async function fetchNoaa(){
+  const station = document.getElementById("station").value;
+  const start = document.getElementById("start").value;
+  const end = document.getElementById("end").value;
+
+  const res = await fetch("/fetch_noaa", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({station, start, end})
+  });
+
+  const j = await res.json();
+  document.getElementById("fetchResult").innerText = JSON.stringify(j, null, 2);
+  document.getElementById("statsImg").src = "/static/stats.png?ts="+Date.now();
+}
+
+
+
+async function trainModel(){
+  const file = document.getElementById("dataFile").value;
+  const body = file? {filename:file} : {};
+
+  const res = await fetch("/train", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify(body)
+  });
+
+  const j = await res.json();
+  document.getElementById("trainResult").innerText = JSON.stringify(j, null, 2);
+}
+</script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+async function populateFileSelect(){
+  const sel = document.getElementById('fileSelect');
+
+  try{
+    const res = await fetch('/data_preview');
+    if(res.ok){
+      const j = await res.json();
+
+      if(j.filename && sel.options.length <= 1){
+        const opt = document.createElement('option');
+        opt.value = j.filename;
+        opt.text = j.filename;
+        sel.appendChild(opt);
+      }
+    }
+  }catch(e){
+    console.warn("No default file available");
+  }
+}
+
+
+
+async function loadPreview(){
+  const sel = document.getElementById('fileSelect');
+  const filename = sel.value;
+  const url = '/data_preview' + (filename?('?filename='+encodeURIComponent(filename)):'')
+  const res = await fetch(url);
+  const j = await res.json();
+
+  if(j.error){
+    document.getElementById('previewArea').innerText = JSON.stringify(j, null, 2);
+    return;
+  }
+
+  const rows = j.preview;
+  if(!rows || rows.length===0){
+    document.getElementById('previewArea').innerText='(no rows)';
+    return;
+  }
+
+  const cols = Object.keys(rows[0]);
+
+  let html = '<table style="border-collapse:collapse;width:100%"><thead><tr>';
+  for(const c of cols)
+    html += '<th style="border-bottom:1px solid #ddd;padding:6px;text-align:left">'+c+'</th>';
+  html += '</tr></thead><tbody>';
+
+  for(const r of rows){
+    html += '<tr>';
+    for(const c of cols)
+      html += '<td style="padding:6px;border-bottom:1px solid #f2f2f2">'+(r[c]===null?'':r[c])+'</td>';
+    html += '</tr>';
+  }
+
+  html += '</tbody></table>';
+  document.getElementById('previewArea').innerHTML = html;
+}
+
+
+
+
+let chart1=null, chart2=null;
+
+async function loadNumeric(){
+  const sel = document.getElementById('fileSelect');
+  const filename = sel.value;
+  const url = '/data_numeric' + (filename?('?filename='+encodeURIComponent(filename)):'')
+  const res = await fetch(url);
+  const j = await res.json();
+
+  if(j.error){
+    alert(JSON.stringify(j));
+    return;
+  }
+
+  const x = j.x;
+  const series = j.series;
+  const keys = Object.keys(series);
+
+  const s1 = keys[0] || null;
+  const s2 = keys[1] || null;
+  const s3 = keys[2] || null;
+  const s4 = keys[3] || null;
+
+  const ctx1 = document.getElementById('chart1').getContext('2d');
+  if(chart1) chart1.destroy();
+
+  chart1 = new Chart(ctx1, {
+    type:'line',
+    data:{
+      labels:x,
+      datasets:[
+        s1 ? {label:s1, data:series[s1], tension:0.2} : null,
+        s2 ? {label:s2, data:series[s2], tension:0.2} : null
+      ].filter(Boolean)
+    },
+    options:{responsive:true, maintainAspectRatio:false}
+  });
+
+  const ctx2 = document.getElementById('chart2').getContext('2d');
+  if(chart2) chart2.destroy();
+
+  chart2 = new Chart(ctx2, {
+    type:'line',
+    data:{
+      labels:x,
+      datasets:[
+        s3 ? {label:s3, data:series[s3], tension:0.2} : null,
+        s4 ? {label:s4, data:series[s4], tension:0.2} : null
+      ].filter(Boolean)
+    },
+    options:{responsive:true, maintainAspectRatio:false}
+  });
+}
+
+window.addEventListener('load', ()=>{ populateFileSelect(); });
+</script>
+
+
+        <hr>
+        <h2>Climate-Aware Irrigation</h2>
+        <p>AI-powered irrigation schedule based on climate and IoT data.</p>
+        <a href="/irrigation_schedule">
+            <button>View Irrigation Schedule</button>
+        </a>
+        </body>
+        
+</html>

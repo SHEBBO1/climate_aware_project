@@ -1,0 +1,114 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Smart Irrigation Schedule</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #d4fc79, #96e6a1);
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            background: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            max-width: 1000px;
+            margin: auto;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        }
+        h1, h2 {
+            color: #2e7d32;
+        }
+        .cards {
+            display: flex;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .card {
+            flex: 1;
+            background: #e8f5e9;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        button {
+            background: #2e7d32;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #1b5e20;
+        }
+        canvas {
+            background: #fff;
+            border-radius: 10px;
+            padding: 10px;
+        }
+        a {
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌱 Climate-Aware Irrigation Schedule</h1>
+        <p>
+            IoT sensors collect soil, water, and weather data.<br>
+            Cloud AI predicts the best irrigation schedule.<br>
+            System adapts to regional climate conditions.
+        </p>
+
+        <div class="cards">
+            <div class="card">
+                <h3>Morning</h3>
+                <p>06:00 AM</p>
+                <strong>Light Irrigation</strong>
+            </div>
+            <div class="card">
+                <h3>Evening</h3>
+                <p>06:30 PM</p>
+                <strong>Deep Irrigation</strong>
+            </div>
+            <div class="card">
+                <h3>Dataset</h3>
+                <p>NOAA Climate Data</p>
+            </div>
+        </div>
+
+        <h2>📊 Weekly Water Usage Prediction</h2>
+        <canvas id="irrigationChart" height="120"></canvas>
+
+        <div style="margin-top:20px;">
+            <button onclick="alert('AI Model Updated!')">Update AI Model</button>
+            <button onclick="alert('Schedule Exported!')">Export Schedule</button>
+            <a href="/"><button>Back to Dashboard</button></a>
+        </div>
+    </div>
+
+    <script>
+        const ctx = document.getElementById('irrigationChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+                datasets: [{
+                    label: 'Water Amount (Liters)',
+                    data: [120, 140, 130, 150, 160, 145, 155],
+                    borderColor: 'green',
+                    backgroundColor: 'rgba(76, 175, 80, 0.3)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            }
+        });
+    </script>
+</body>
+</html>

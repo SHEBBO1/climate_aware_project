@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Climate Aware Prediction</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #4CAF50, #2196F3);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+        }
+
+        .card {
+            background: #fff;
+            width: 420px;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+
+        h2 {
+            text-align: center;
+            color: #2e7d32;
+            margin-bottom: 20px;
+        }
+
+        label {
+            font-size: 14px;
+            color: #333;
+            margin-top: 10px;
+            display: block;
+        }
+
+        input {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+        }
+
+        button {
+            width: 100%;
+            margin-top: 20px;
+            padding: 10px;
+            background: #4CAF50;
+            border: none;
+            color: white;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #43a047;
+        }
+
+        pre {
+            background: #f5f5f5;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-size: 13px;
+            overflow-x: auto;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 12px;
+            color: #777;
+        }
+    </style>
+</head>
+
+<body>
+<div class="card">
+    <h2>🌱 Climate Aware Prediction</h2>
+
+    <label>Soil Moisture</label>
+    <input id="soil_moisture" value="0.3">
+
+    <label>Soil Temperature</label>
+    <input id="soil_temp" value="22">
+
+    <label>Air Temperature</label>
+    <input id="air_temp" value="28">
+
+    <label>Humidity</label>
+    <input id="humidity" value="55">
+
+    <label>Rain (last 24h)</label>
+    <input id="rain_24h" value="0">
+
+    <label>Evapotranspiration</label>
+    <input id="evapotranspiration" value="3">
+
+    <button onclick="send()">Run Prediction</button>
+
+    <pre id="out"></pre>
+
+    <div class="footer">
+        Cloud AI for Smart Irrigation 🌧️🚜
+    </div>
+</div>
+
+<script>
+function send() {
+    fetch("/predict", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            soil_moisture: document.getElementById("soil_moisture").value,
+            soil_temp: document.getElementById("soil_temp").value,
+            air_temp: document.getElementById("air_temp").value,
+            humidity: document.getElementById("humidity").value,
+            rain_24h: document.getElementById("rain_24h").value,
+            evapotranspiration: document.getElementById("evapotranspiration").value
+        })
+    })
+    .then(r => r.json())
+    .then(d => {
+        document.getElementById("out").innerText =
+            JSON.stringify(d, null, 2);
+    });
+}
+</script>
+
+</body>
+</html>
