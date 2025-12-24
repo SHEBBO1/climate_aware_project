@@ -214,7 +214,7 @@ Scale Application
 kubectl scale deployment climate-farm-deployment --replicas=3
 ```
 
-### Self-Healing Test
+Self-Healing Test
 
 ```bash
 kubectl delete pod <pod-name>
@@ -222,12 +222,12 @@ kubectl delete pod <pod-name>
 
 Kubernetes automatically recreates the pod.
 
----
 
- 10. Exam Explanation (Short Version)
+
+ 10.  Explanation 
 
 "The Flask-based AI application was containerized using Docker, pushed to a container registry, and deployed on Kubernetes using Deployment and Service YAML files. Kubernetes provides scalability, self-healing, and exposes the application through a NodePort service."
 
----
 
- End of Document
+
+ 
